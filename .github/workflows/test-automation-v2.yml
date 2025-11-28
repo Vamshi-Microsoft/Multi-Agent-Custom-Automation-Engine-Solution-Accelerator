@@ -70,17 +70,7 @@ jobs:
           if [ -z "${{ env.MACAE_WEB_URL }}" ]; then
             echo "ERROR: No Web URL provided for testing"
             exit 1
-          elif [ -z "${{ env.MACAE_URL_API  }}" ]; then
-            echo "ERROR: No API URL provided for testing"
-            exit 1
-          elif [ -z "${{ env.MACAE_RG }}" ]; then
-            echo "ERROR: Resource group name missing"
-            exit 1
-          elif [ -z "${{ env.MACAE_CONTAINER_APP }}" ]; then
-            echo "ERROR: Container app name missing"
-            exit 1
           fi
-
 
       - name: Wait for Application to be Ready
         run: |
