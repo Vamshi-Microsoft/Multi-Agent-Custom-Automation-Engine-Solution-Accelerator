@@ -3,10 +3,20 @@ name: Test Automation Content Processing-v2
 on:
     workflow_call:
         inputs:
-          CP_WEB_URL:
-            required: true
+          MACAE_WEB_URL:
+            required: false
             type: string
-            description: "Web URL for Content Processing"
+            description: "Web URL for MACAE (overrides environment variable)"
+          MACAE_URL_API:
+            required: false
+            type: string
+            description: "API URL for MACAE (overrides environment variable)"
+          MACAE_RG:
+            required: false
+            type: string
+          MACAE_CONTAINER_APP:
+            required: false
+            type: string
           TEST_SUITE:
             required: false
             type: string
@@ -21,9 +31,11 @@ on:
             value: ${{ jobs.test.outputs.TEST_REPORT_URL }}
 
 env:
-    url: ${{ inputs.CP_WEB_URL }}
-    accelerator_name: "Content Processing"
-    test_suite: ${{ inputs.TEST_SUITE }}
+    MACAE_WEB_URL: ${{ inputs.MACAE_WEB_URL }}
+    MACAE_URL_API: ${{ inputs.MACAE_URL_API }}
+    MACAE_RG: ${{ inputs.MACAE_RG }}
+    MACAE_CONTAINER_APP: ${{ inputs.MACAE_CONTAINER_APP }}
+    accelerator_name: "MACAE v3"
 
 jobs:
   test:
@@ -53,35 +65,38 @@ jobs:
       - name: Ensure browsers are installed
         run: python -m playwright install --with-deps chromium
 
-      - name: Validate URL
+      - name: Validate Inputs
         run: |
-          if [ -z "${{ env.url }}" ]; then
-            echo "ERROR: No URL provided for testing"
+          if [ -z "${{ env.MACAE_WEB_URL }}" ]; then
+            echo "ERROR: No Web URL provided for testing"
+            exit 1
+          elif [ -z "${{ env.MACAE_URL_API  }}" ]; then
+            echo "ERROR: No API URL provided for testing"
+            exit 1
+          elif [ -z "${{ env.MACAE_RG }}" ]; then
+            echo "ERROR: Resource group name missing"
+            exit 1
+          elif [ -z "${{ env.MACAE_CONTAINER_APP }}" ]; then
+            echo "ERROR: Container app name missing"
             exit 1
           fi
-          echo "Testing URL: ${{ env.url }}"
-          echo "Test Suite: ${{ env.test_suite }}"
 
 
       - name: Wait for Application to be Ready
         run: |
-          echo "Waiting for application to be ready at ${{ env.url }} "
+          echo "Waiting for application to be ready at ${{ env.MACAE_WEB_URL }}"
           max_attempts=10
           attempt=1
-          
           while [ $attempt -le $max_attempts ]; do
             echo "Attempt $attempt: Checking if application is ready..."
-            if curl -f -s "${{ env.url }}" > /dev/null; then
+            if curl -f -s "${{ env.MACAE_WEB_URL }}" > /dev/null; then
               echo "Application is ready!"
               break
-
             fi
-            
             if [ $attempt -eq $max_attempts ]; then
               echo "Application is not ready after $max_attempts attempts"
               exit 1
             fi
-            
             echo "Application not ready, waiting 30 seconds..."
             sleep 30
             attempt=$((attempt + 1))
@@ -90,7 +105,7 @@ jobs:
       - name: Run tests(1)
         id: test1
         run: |
-          if [ "${{ env.test_suite }}" == "GoldenPath-Testing" ]; then
+          if [ "${{ inputs.TEST_SUITE }}" == "GoldenPath-Testing" ]; then
             xvfb-run pytest -m gp --headed --html=report/report.html --self-contained-html
           else
             xvfb-run pytest --headed --html=report/report.html --self-contained-html
@@ -107,7 +122,7 @@ jobs:
         id: test2
         if: ${{ steps.test1.outcome == 'failure' }}
         run: |
-          if [ "${{ env.test_suite }}" == "GoldenPath-Testing" ]; then
+          if [ "${{ inputs.TEST_SUITE }}" == "GoldenPath-Testing" ]; then
             xvfb-run pytest -m gp --headed --html=report/report.html --self-contained-html
           else
             xvfb-run pytest --headed --html=report/report.html --self-contained-html
@@ -124,7 +139,7 @@ jobs:
         id: test3
         if: ${{ steps.test2.outcome == 'failure' }}
         run: |
-          if [ "${{ env.test_suite }}" == "GoldenPath-Testing" ]; then
+          if [ "${{ inputs.TEST_SUITE }}" == "GoldenPath-Testing" ]; then
             xvfb-run pytest -m gp --headed --html=report/report.html --self-contained-html
           else
             xvfb-run pytest --headed --html=report/report.html --self-contained-html
@@ -143,7 +158,7 @@ jobs:
         if: always()
         run: |
           # Determine test suite type for title
-          if [ "${{ env.test_suite }}" == "GoldenPath-Testing" ]; then
+          if [ "${{ inputs.TEST_SUITE }}" == "GoldenPath-Testing" ]; then
             echo "## 🧪 E2E Test Job Summary : Golden Path Testing" >> $GITHUB_STEP_SUMMARY
           else
             echo "## 🧪 E2E Test Job Summary : Smoke Testing" >> $GITHUB_STEP_SUMMARY
@@ -160,8 +175,8 @@ jobs:
             echo "| **Job Status** | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
           fi
           
-          echo "| **Target URL** | [${{ env.url }}](${{ env.url }}) |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Test Suite** | \`${{ env.test_suite }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Target URL** | [${{ inputs.MACAE_WEB_URL }}](${{ inputs.MACAE_WEB_URL }}) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Test Suite** | \`${{ inputs.TEST_SUITE }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| **Test Report** | [Download Artifact](${{ steps.upload_report.outputs.artifact-url }}) |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           

@@ -70,9 +70,15 @@ on:
       RESOURCE_GROUP_NAME:
         description: "Resource Group Name"
         value: ${{ jobs.azure-setup.outputs.RESOURCE_GROUP_NAME }}
-      CONTAINER_WEB_APPURL:
+      WEBAPP_URL:
         description: "Container Web App URL"
-        value: ${{ jobs.deploy-linux.outputs.CONTAINER_WEB_APPURL || jobs.deploy-windows.outputs.CONTAINER_WEB_APPURL }}
+        value: ${{ jobs.deploy-linux.outputs.WEBAPP_URL || jobs.deploy-windows.outputs.WEBAPP_URL }}
+      MACAE_URL_API:
+        description: "MACAE API URL"
+        value: ${{ jobs.deploy-linux.outputs.MACAE_URL_API || jobs.deploy-windows.outputs.MACAE_URL_API }}
+      CONTAINER_APP:
+        description: "Container App Name"
+        value: ${{ jobs.deploy-linux.outputs.CONTAINER_APP || jobs.deploy-windows.outputs.CONTAINER_APP }}
       ENV_NAME:
         description: "Environment Name"
         value: ${{ jobs.azure-setup.outputs.ENV_NAME }}
@@ -90,7 +96,9 @@ on:
         value: ${{ jobs.azure-setup.outputs.QUOTA_FAILED }}
 
 env:
-  GPT_MIN_CAPACITY: 100
+  GPT_MIN_CAPACITY: 150
+  O4_MINI_MIN_CAPACITY: 50
+  GPT41_MINI_MIN_CAPACITY: 50
   BRANCH_NAME: ${{ github.event.workflow_run.head_branch || github.head_ref || github.ref_name }}
   WAF_ENABLED: ${{ inputs.trigger_type == 'workflow_dispatch' && (inputs.waf_enabled || false) || false }}
   EXP: ${{ inputs.trigger_type == 'workflow_dispatch' && (inputs.EXP || false) || false }}
@@ -142,21 +150,23 @@ jobs:
       
       - name: Run Quota Check
         id: quota-check
-        shell: bash
         run: |
           export AZURE_CLIENT_ID=${{ secrets.AZURE_CLIENT_ID }}
           export AZURE_TENANT_ID=${{ secrets.AZURE_TENANT_ID }}
           export AZURE_CLIENT_SECRET=${{ secrets.AZURE_CLIENT_SECRET }}
           export AZURE_SUBSCRIPTION_ID="${{ secrets.AZURE_SUBSCRIPTION_ID }}"
-          export GPT_MIN_CAPACITY=${{ env.GPT_MIN_CAPACITY }}
+          export GPT_MIN_CAPACITY="150"
+          export O4_MINI_MIN_CAPACITY="50"
+          export GPT41_MINI_MIN_CAPACITY="50"
           export AZURE_REGIONS="${{ vars.AZURE_REGIONS }}"
 
           chmod +x infra/scripts/checkquota.sh
           if ! infra/scripts/checkquota.sh; then
+            # If quota check fails due to insufficient quota, set the flag
             if grep -q "No region with sufficient quota found" infra/scripts/checkquota.sh; then
               echo "QUOTA_FAILED=true" >> $GITHUB_ENV
             fi
-            exit 1
+            exit 1  # Fail the pipeline if any other failure occurs
           fi
 
       - name: Set Quota Failure Output
@@ -201,7 +211,7 @@ jobs:
             echo "RESOURCE_GROUP_NAME=${{ inputs.resource_group_name }}" >> $GITHUB_ENV
           else
             echo "Generating a unique resource group name..."
-            ACCL_NAME="cp"  # Account name as specified
+            ACCL_NAME="macae"
             SHORT_UUID=$(uuidgen | cut -d'-' -f1)
             UNIQUE_RG_NAME="arg-${ACCL_NAME}-${SHORT_UUID}"
             echo "RESOURCE_GROUP_NAME=${UNIQUE_RG_NAME}" >> $GITHUB_ENV
@@ -259,23 +269,14 @@ jobs:
             echo "Current branch: $BRANCH_NAME"
             
             if [[ "$BRANCH_NAME" == "main" ]]; then
-              IMAGE_TAG="latest"
-              echo "Using main branch - image tag: latest"
-            elif [[ "$BRANCH_NAME" == "dev" ]]; then
-              IMAGE_TAG="dev"
-              echo "Using dev branch - image tag: dev"
-            elif [[ "$BRANCH_NAME" == "demo" ]]; then
-              IMAGE_TAG="demo"
-              echo "Using demo branch - image tag: demo"
+              IMAGE_TAG="latest_v3"
+            elif [[ "$BRANCH_NAME" == "dev-v3" ]]; then
+              IMAGE_TAG="dev-v3"
             elif [[ "$BRANCH_NAME" == "hotfix" ]]; then
               IMAGE_TAG="hotfix"
-            elif [[ "$BRANCH_NAME" == "dependabotchanges" ]]; then
-              IMAGE_TAG="dependabotchanges"
             else
-              IMAGE_TAG="latest"
-              echo "Using default for branch '$BRANCH_NAME' - image tag: latest"
+              IMAGE_TAG="latest_v3"
             fi
-            
             echo "Using existing Docker image tag: $IMAGE_TAG"
           fi
           
@@ -317,7 +318,7 @@ jobs:
           if [[ -n "${{ inputs.resource_group_name }}" ]]; then
             echo "| **Resource Group** | \`${{ inputs.resource_group_name }}\` (Pre-specified) |" >> $GITHUB_STEP_SUMMARY
           else
-            echo "| **Resource Group** | \`${{ env.RESOURCE_GROUP_NAME }}\` (Auto-generated) |" >> $GITHUB_STEP_SUMMARY
+            echo "| **Resource Group** | \`${{ inputs.resource_group_name }}\` (Auto-generated) |" >> $GITHUB_STEP_SUMMARY
           fi
           
           echo "" >> $GITHUB_STEP_SUMMARY

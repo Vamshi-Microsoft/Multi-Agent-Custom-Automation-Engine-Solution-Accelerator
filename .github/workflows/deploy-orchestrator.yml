@@ -93,11 +93,14 @@ jobs:
     secrets: inherit
 
   e2e-test:
-    if: always() && ((needs.deploy.result == 'success' && needs.deploy.outputs.CONTAINER_WEB_APPURL != '') || (inputs.existing_webapp_url != '' && inputs.existing_webapp_url != null)) && (inputs.trigger_type != 'workflow_dispatch' || (inputs.run_e2e_tests != 'None' && inputs.run_e2e_tests != '' && inputs.run_e2e_tests != null))
+    if: always() && ((needs.deploy.result == 'success' && needs.deploy.outputs.WEBAPP_URL != '') || (inputs.existing_webapp_url != '' && inputs.existing_webapp_url != null)) && (inputs.trigger_type != 'workflow_dispatch' || (inputs.run_e2e_tests != 'None' && inputs.run_e2e_tests != '' && inputs.run_e2e_tests != null))
     needs: [docker-build, deploy]
     uses: ./.github/workflows/test-automation-v2.yml
     with:
-      CP_WEB_URL: ${{ needs.deploy.outputs.CONTAINER_WEB_APPURL || inputs.existing_webapp_url }}
+      MACAE_WEB_URL: ${{ needs.deploy.outputs.WEBAPP_URL || inputs.existing_webapp_url }}
+      MACAE_URL_API: ${{ needs.deploy.outputs.MACAE_URL_API }}
+      MACAE_RG: ${{ needs.deploy.outputs.RESOURCE_GROUP_NAME }}
+      MACAE_CONTAINER_APP: ${{ needs.deploy.outputs.CONTAINER_APP }}
       TEST_SUITE: ${{ inputs.trigger_type == 'workflow_dispatch' && inputs.run_e2e_tests || 'GoldenPath-Testing' }}
     secrets: inherit
 
@@ -113,7 +116,7 @@ jobs:
       existing_webapp_url: ${{ inputs.existing_webapp_url }}
       deploy_result: ${{ needs.deploy.result }}
       e2e_test_result: ${{ needs.e2e-test.result }}
-      CONTAINER_WEB_APPURL: ${{ needs.deploy.outputs.CONTAINER_WEB_APPURL }}
+      CONTAINER_WEB_APPURL: ${{ needs.deploy.outputs.WEBAPP_URL }}
       RESOURCE_GROUP_NAME: ${{ needs.deploy.outputs.RESOURCE_GROUP_NAME }}
       QUOTA_FAILED: ${{ needs.deploy.outputs.QUOTA_FAILED }}
       TEST_SUCCESS: ${{ needs.e2e-test.outputs.TEST_SUCCESS }}
