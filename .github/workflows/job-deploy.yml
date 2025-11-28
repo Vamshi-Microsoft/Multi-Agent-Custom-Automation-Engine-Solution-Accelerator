@@ -211,7 +211,7 @@ jobs:
             echo "RESOURCE_GROUP_NAME=${{ inputs.resource_group_name }}" >> $GITHUB_ENV
           else
             echo "Generating a unique resource group name..."
-            ACCL_NAME="macae"
+            ACCL_NAME="macaev2"
             SHORT_UUID=$(uuidgen | cut -d'-' -f1)
             UNIQUE_RG_NAME="arg-${ACCL_NAME}-${SHORT_UUID}"
             echo "RESOURCE_GROUP_NAME=${UNIQUE_RG_NAME}" >> $GITHUB_ENV
@@ -318,7 +318,7 @@ jobs:
           if [[ -n "${{ inputs.resource_group_name }}" ]]; then
             echo "| **Resource Group** | \`${{ inputs.resource_group_name }}\` (Pre-specified) |" >> $GITHUB_STEP_SUMMARY
           else
-            echo "| **Resource Group** | \`${{ inputs.resource_group_name }}\` (Auto-generated) |" >> $GITHUB_STEP_SUMMARY
+            echo "| **Resource Group** | \`${{ env.RESOURCE_GROUP_NAME }}\` (Auto-generated) |" >> $GITHUB_STEP_SUMMARY
           fi
           
           echo "" >> $GITHUB_STEP_SUMMARY
