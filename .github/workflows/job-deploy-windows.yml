@@ -232,7 +232,7 @@ jobs:
             # Display Container App Backend URL if available
             if [[ -n "${{ env.BACKEND_URL }}" ]]; then
               echo "- **Backend API URL**: [${{ env.BACKEND_URL }}](${{ env.BACKEND_URL }})" >> $GITHUB_STEP_SUMMARY
-              echo "- **Container App Name**: \`${{ env.CONTAINER_APP }}\`" >> $GITHUB_STEP_SUMMARY
+              echo "- **Container App Name**: \`${{ steps.get_output_windows.outputs.CONTAINER_APP }}\`" >> $GITHUB_STEP_SUMMARY
             fi
             
             echo "" >> $GITHUB_STEP_SUMMARY
