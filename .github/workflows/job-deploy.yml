@@ -76,9 +76,6 @@ on:
       MACAE_URL_API:
         description: "MACAE API URL"
         value: ${{ jobs.deploy-linux.outputs.MACAE_URL_API || jobs.deploy-windows.outputs.MACAE_URL_API }}
-      CONTAINER_APP:
-        description: "Container App Name"
-        value: ${{ jobs.deploy-linux.outputs.CONTAINER_APP || jobs.deploy-windows.outputs.CONTAINER_APP }}
       ENV_NAME:
         description: "Environment Name"
         value: ${{ jobs.azure-setup.outputs.ENV_NAME }}

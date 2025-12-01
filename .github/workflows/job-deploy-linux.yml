@@ -41,9 +41,6 @@ on:
       MACAE_URL_API:
         description: "MACAE API URL"
         value: ${{ jobs.deploy-linux.outputs.MACAE_URL_API }}
-      CONTAINER_APP:
-        description: "Container App Name"
-        value: ${{ jobs.deploy-linux.outputs.CONTAINER_APP }}
 
 jobs:
   deploy-linux:
@@ -53,7 +50,6 @@ jobs:
     outputs:
       WEBAPP_URL: ${{ steps.get_output.outputs.WEBAPP_URL }}
       MACAE_URL_API: ${{ steps.get_backend_url.outputs.MACAE_URL_API }}
-      CONTAINER_APP: ${{steps.get_backend_url.outputs.CONTAINER_APP}}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -248,7 +244,6 @@ jobs:
             # Display Container App Backend URL if available
             if [[ -n "${{ steps.get_backend_url.outputs.MACAE_URL_API }}" ]]; then
               echo "- **Backend API URL**: [${{ steps.get_backend_url.outputs.MACAE_URL_API }}](${{ steps.get_backend_url.outputs.MACAE_URL_API }})" >> $GITHUB_STEP_SUMMARY
-              echo "- **Container App Name**: \`${{ steps.get_backend_url.outputs.CONTAINER_APP }}\`" >> $GITHUB_STEP_SUMMARY
             fi
             
             echo "" >> $GITHUB_STEP_SUMMARY

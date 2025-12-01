@@ -14,9 +14,6 @@ on:
           MACAE_RG:
             required: false
             type: string
-          MACAE_CONTAINER_APP:
-            required: false
-            type: string
           TEST_SUITE:
             required: false
             type: string
@@ -34,7 +31,6 @@ env:
     MACAE_WEB_URL: ${{ inputs.MACAE_WEB_URL }}
     MACAE_URL_API: ${{ inputs.MACAE_URL_API }}
     MACAE_RG: ${{ inputs.MACAE_RG }}
-    MACAE_CONTAINER_APP: ${{ inputs.MACAE_CONTAINER_APP }}
     accelerator_name: "MACAE v3"
 
 jobs:

@@ -41,10 +41,6 @@ on:
       MACAE_URL_API:
         description: "MACAE API URL"
         value: ${{ jobs.deploy-windows.outputs.MACAE_URL_API }}
-      CONTAINER_APP:
-        description: "Container App Name"
-        value: ${{ jobs.deploy-windows.outputs.CONTAINER_APP }}
-
 jobs:
   deploy-windows:
     runs-on: windows-latest
@@ -53,7 +49,6 @@ jobs:
     outputs:
       WEBAPP_URL: ${{ env.WEB_APPURL }}
       MACAE_URL_API: ${{ env.BACKEND_URL }}
-      CONTAINER_APP: ${{ steps.get_output_windows.outputs.CONTAINER_APP }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -165,13 +160,6 @@ jobs:
           "BACKEND_URL=$BACKEND_URL" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           Write-Host "Backend URL: $BACKEND_URL"
 
-          # Set step outputs for container app if available
-          if ($DEPLOY_OUTPUT.PSObject.Properties.Name -contains "CONTAINER_APP_NAME") {
-            $CONTAINER_APP = $DEPLOY_OUTPUT.CONTAINER_APP_NAME
-            "CONTAINER_APP=$CONTAINER_APP" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-            Write-Host "Container App Name: $CONTAINER_APP"
-          }
-
           $WEB_APPURL = "https://$($DEPLOY_OUTPUT.webSiteDefaultHostname)"
           "WEB_APPURL=$WEB_APPURL" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           "WEB_APPURL=$WEB_APPURL" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
@@ -232,7 +220,6 @@ jobs:
             # Display Container App Backend URL if available
             if [[ -n "${{ env.BACKEND_URL }}" ]]; then
               echo "- **Backend API URL**: [${{ env.BACKEND_URL }}](${{ env.BACKEND_URL }})" >> $GITHUB_STEP_SUMMARY
-              echo "- **Container App Name**: \`${{ steps.get_output_windows.outputs.CONTAINER_APP }}\`" >> $GITHUB_STEP_SUMMARY
             fi
             
             echo "" >> $GITHUB_STEP_SUMMARY
