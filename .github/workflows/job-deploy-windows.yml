@@ -37,13 +37,13 @@ on:
     outputs:
       WEBAPP_URL:
         description: "Web Application URL"
-        value: ${{ jobs.deploy-linux.outputs.WEBAPP_URL }}
+        value: ${{ jobs.deploy-windows.outputs.WEBAPP_URL }}
       MACAE_URL_API:
         description: "MACAE API URL"
-        value: ${{ jobs.deploy-linux.outputs.MACAE_URL_API }}
+        value: ${{ jobs.deploy-windows.outputs.MACAE_URL_API }}
       CONTAINER_APP:
         description: "Container App Name"
-        value: ${{ jobs.deploy-linux.outputs.CONTAINER_APP }}
+        value: ${{ jobs.deploy-windows.outputs.CONTAINER_APP }}
 
 jobs:
   deploy-windows:

@@ -54,42 +54,40 @@ jobs:
           username: ${{ secrets.ACR_TEST_USERNAME }}
           password: ${{ secrets.ACR_TEST_PASSWORD }}
 
-      - name: Build and Push ContentProcessor Docker image
+      - name: Build and optionally push Backend Docker image
         uses: docker/build-push-action@v6
         env:
           DOCKER_BUILD_SUMMARY: false
         with:
-          context: ./src/ContentProcessor
-          file: ./src/ContentProcessor/Dockerfile
+          context: ./src/backend
+          file: ./src/backend/Dockerfile
           push: true
           tags: |
-            ${{ secrets.ACR_TEST_LOGIN_SERVER }}/contentprocessor:${{ steps.generate_docker_tag.outputs.IMAGE_TAG }}
-            ${{ secrets.ACR_TEST_LOGIN_SERVER }}/contentprocessor:${{ steps.generate_docker_tag.outputs.IMAGE_TAG }}_${{ github.run_number }}
+            ${{ secrets.ACR_TEST_LOGIN_SERVER }}/macaebackend:${{ steps.generate_docker_tag.outputs.IMAGE_TAG }}
+            ${{ secrets.ACR_TEST_LOGIN_SERVER }}/macaebackend:${{ steps.generate_docker_tag.outputs.IMAGE_TAG }}_${{ github.run_number }}
 
-      - name: Build and Push ContentProcessorAPI Docker image
+      - name: Build and optionally push Frontend Docker image
         uses: docker/build-push-action@v6
         env:
           DOCKER_BUILD_SUMMARY: false
         with:
-          context: ./src/ContentProcessorAPI
-          file: ./src/ContentProcessorAPI/Dockerfile
+          context: ./src/frontend
+          file: ./src/frontend/Dockerfile
           push: true
           tags: |
-            ${{ secrets.ACR_TEST_LOGIN_SERVER }}/contentprocessorapi:${{ steps.generate_docker_tag.outputs.IMAGE_TAG }}
-            ${{ secrets.ACR_TEST_LOGIN_SERVER }}/contentprocessorapi:${{ steps.generate_docker_tag.outputs.IMAGE_TAG }}_${{ github.run_number }}
-
-      - name: Build and Push ContentProcessorWeb Docker image
+            ${{ secrets.ACR_TEST_LOGIN_SERVER }}/macaefrontend:${{ steps.generate_docker_tag.outputs.IMAGE_TAG }}
+            ${{ secrets.ACR_TEST_LOGIN_SERVER }}/macaefrontend:${{ steps.generate_docker_tag.outputs.IMAGE_TAG }}_${{ github.run_number }}
+      - name: Build and optionally push MCP Docker image
         uses: docker/build-push-action@v6
         env:
           DOCKER_BUILD_SUMMARY: false
         with:
-          context: ./src/ContentProcessorWeb
-          file: ./src/ContentProcessorWeb/Dockerfile
+          context: ./src/mcp_server
+          file: ./src/mcp_server/Dockerfile
           push: true
           tags: |
-            ${{ secrets.ACR_TEST_LOGIN_SERVER }}/contentprocessorweb:${{ steps.generate_docker_tag.outputs.IMAGE_TAG }}
-            ${{ secrets.ACR_TEST_LOGIN_SERVER }}/contentprocessorweb:${{ steps.generate_docker_tag.outputs.IMAGE_TAG }}_${{ github.run_number }}
-
+            ${{ secrets.ACR_TEST_LOGIN_SERVER }}/macaemcp:${{ steps.generate_docker_tag.outputs.IMAGE_TAG }}
+            ${{ secrets.ACR_TEST_LOGIN_SERVER }}/macaemcp:${{ steps.generate_docker_tag.outputs.IMAGE_TAG }}_${{ github.run_number }}
       - name: Verify Docker Image Build
         shell: bash
         run: |
@@ -114,9 +112,9 @@ jobs:
             echo "Successfully built and pushed three Docker images to ACR:" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "**Built Images:**" >> $GITHUB_STEP_SUMMARY
-            echo "- \`${ACR_NAME}.azurecr.io/contentprocessor:${{ steps.generate_docker_tag.outputs.IMAGE_TAG }}\`" >> $GITHUB_STEP_SUMMARY
-            echo "- \`${ACR_NAME}.azurecr.io/contentprocessorapi:${{ steps.generate_docker_tag.outputs.IMAGE_TAG }}\`" >> $GITHUB_STEP_SUMMARY
-            echo "- \`${ACR_NAME}.azurecr.io/contentprocessorweb:${{ steps.generate_docker_tag.outputs.IMAGE_TAG }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- \`${ACR_NAME}/macaebackend:${{ steps.generate_docker_tag.outputs.IMAGE_TAG }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- \`${ACR_NAME}/macaefrontend:${{ steps.generate_docker_tag.outputs.IMAGE_TAG }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- \`${ACR_NAME}/macaemcp:${{ steps.generate_docker_tag.outputs.IMAGE_TAG }}\`" >> $GITHUB_STEP_SUMMARY
           else
             echo "### ❌ Build Failed" >> $GITHUB_STEP_SUMMARY
             echo "- Docker build process encountered an error" >> $GITHUB_STEP_SUMMARY
