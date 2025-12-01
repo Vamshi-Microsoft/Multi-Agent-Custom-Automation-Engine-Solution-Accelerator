@@ -231,12 +231,10 @@ jobs:
           echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| **Job Status** | ${{ job.status == 'success' && '✅ Success' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Resource Group** | \`${{ inputs.RESOURCE_GROUP_NAME }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Environment Name** | \`${{ inputs.ENV_NAME }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| **Configuration Type** | \`${{ inputs.WAF_ENABLED == 'true' && inputs.EXP == 'true' && 'WAF + EXP' || inputs.WAF_ENABLED == 'true' && inputs.EXP != 'true' && 'WAF + Non-EXP' || inputs.WAF_ENABLED != 'true' && inputs.EXP == 'true' && 'Non-WAF + EXP' || 'Non-WAF + Non-EXP' }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| **Azure Region (Infrastructure)** | \`${{ inputs.AZURE_LOCATION }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| **Azure OpenAI Region** | \`${{ inputs.AZURE_ENV_OPENAI_LOCATION }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| **Docker Image Tag** | \`${{ inputs.IMAGE_TAG }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Docker Build** | \`${{ inputs.BUILD_DOCKER_IMAGE == 'true' && '✅ Enabled' || '❌ Disabled (using existing image)' }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           if [[ "${{ job.status }}" == "success" ]]; then
             echo "### ✅ Deployment Details" >> $GITHUB_STEP_SUMMARY
@@ -257,17 +255,13 @@ jobs:
             echo "#### 🎯 Post-Deployment Actions Completed:" >> $GITHUB_STEP_SUMMARY
             echo "- ✅ Azure resources provisioned and configured" >> $GITHUB_STEP_SUMMARY
             echo "- ✅ Agent team configurations uploaded" >> $GITHUB_STEP_SUMMARY
-            echo "- ✅ Sample datasets processed and indexed" >> $GITHUB_STEP_SUMMARY
-            echo "- ✅ Storage account and AI Search service configured" >> $GITHUB_STEP_SUMMARY
-            
+            echo "- ✅ Sample datasets processed and indexed" >> $GITHUB_STEP_SUMMARY            
           else
             echo "### ❌ Deployment Failed" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "- ❌ Deployment process encountered an error" >> $GITHUB_STEP_SUMMARY
             echo "- 🔍 Check the deployment steps above for detailed error information" >> $GITHUB_STEP_SUMMARY
-            echo "- 📋 Review the job logs for specific failure points" >> $GITHUB_STEP_SUMMARY
           fi
-
       - name: Logout from Azure
         if: always()
         shell: bash
