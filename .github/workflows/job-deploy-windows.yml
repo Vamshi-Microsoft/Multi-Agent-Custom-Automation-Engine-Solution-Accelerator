@@ -198,19 +198,19 @@ jobs:
           Write-Host "Backend URL: ${{ steps.get_backend_url.outputs.MACAE_URL_API }}"
           
           # Run upload team config script with parameters
-          & "infra/scripts/upload_team_config.ps1" `
-            -BackendUrl "${{ steps.get_backend_url.outputs.MACAE_URL_API }}" `
-            -TeamConfigPath "data/agent_teams" `
-            -SubscriptionId "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+          & "infra/scripts/Upload-Team-Config.ps1" `
+            -backendUrl "${{ steps.get_backend_url.outputs.MACAE_URL_API }}" `
+            -DirectoryPath "data/agent_teams" `
+            -AzSubscriptionId "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
           
           # Run process sample data script with parameters
-          & "infra/scripts/process_sample_data.ps1" `
+          & "infra/scripts/Process-Sample-Data.ps1" `
             -StorageAccount "$STORAGE_ACCOUNT" `
-            -ContainerName "sample-dataset" `
-            -SearchService "$AI_SEARCH" `
-            -IndexName "sample-dataset-index" `
+            -BlobContainer "sample-dataset" `
+            -AiSearch "$AI_SEARCH" `
+            -AiSearchIndex "sample-dataset-index" `
             -ResourceGroup "${{ inputs.RESOURCE_GROUP_NAME }}" `
-            -SubscriptionId "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+            -AzSubscriptionId "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
 
           Write-Host "=== Post-Deployment Script Completed Successfully ==="
 
