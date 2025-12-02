@@ -81,9 +81,7 @@ jobs:
         run: |
           $ErrorActionPreference = "Stop"
           Write-Host "Starting azd deployment..."
-          Write-Host "EXP: ${{ inputs.EXP }}"
-          Write-Host "Using Docker Image Tag: ${{ inputs.IMAGE_TAG }}"
-
+         
           Write-Host "Creating environment..."
           azd env new ${{ inputs.ENV_NAME }} --no-prompt
           Write-Host "Environment created: ${{ inputs.ENV_NAME }}"
@@ -134,7 +132,6 @@ jobs:
 
           # Deploy using azd up
           azd up --no-prompt
-          
           Write-Host "✅ Deployment succeeded."
 
           # Get deployment outputs using azd

@@ -89,15 +89,8 @@ jobs:
         shell: bash
         run: |
           set -e          
-          echo "Starting azd deployment..."
-          echo "EXP: ${{ inputs.EXP }}"
-          echo "Using Docker Image Tag: ${{ inputs.IMAGE_TAG }}"
-          
           # Install azd (Azure Developer CLI)
           curl -fsSL https://aka.ms/install-azd.sh | bash
-
-          # Generate current timestamp in desired format: YYYY-MM-DDTHH:MM:SS.SSSSSSSZ
-          current_date=$(date -u +"%Y-%m-%dT%H:%M:%S.%7NZ")
 
           echo "Creating environment..."
           azd env new ${{ inputs.ENV_NAME }} --no-prompt
