@@ -144,7 +144,7 @@ jobs:
             exit 1
           }
 
-           # Export variables only after successful deployment
+          # Export variables only after successful deployment
           $AZURE_STORAGE_ACCOUNT_NAME = $DEPLOY_OUTPUT.AZURE_STORAGE_ACCOUNT_NAME
           "AZURE_STORAGE_ACCOUNT_NAME=$AZURE_STORAGE_ACCOUNT_NAME" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           Write-Host "Azure Storage Account Name: $AZURE_STORAGE_ACCOUNT_NAME"
