@@ -48,7 +48,7 @@ jobs:
     env:
       AZURE_DEV_COLLECT_TELEMETRY: ${{ vars.AZURE_DEV_COLLECT_TELEMETRY }}
     outputs:
-      WEBAPP_URL: ${{ steps.get_output_linux.outputs.WEB_APPURL }}
+      WEBAPP_URL: ${{ steps.get_output_linux.outputs.WEBAPP_URL }}
       MACAE_URL_API: ${{ steps.get_output_linux.outputs.BACKEND_URL }}
     steps:
       - name: Checkout Code
@@ -134,7 +134,7 @@ jobs:
             azd env set AZURE_ENV_LOG_ANALYTICS_WORKSPACE_ID="$EXP_LOG_ANALYTICS_ID"
             azd env set AZURE_EXISTING_AI_PROJECT_RESOURCE_ID="$EXP_AI_PROJECT_ID"
           else
-            echo "❌ EXP DISABLED - Skipping EXP parameters"
+            echo "EXP DISABLED - Skipping EXP parameters"
           fi
 
           azd up --no-prompt
@@ -164,9 +164,9 @@ jobs:
           echo "BACKEND_URL=$BACKEND_URL" >> $GITHUB_ENV
           echo "BACKEND_URL=$BACKEND_URL" >> $GITHUB_OUTPUT
 
-          export WEB_APPURL="https://$(echo "$DEPLOY_OUTPUT" | jq -r '.webSiteDefaultHostname // empty')"
-          echo "WEB_APPURL=$WEB_APPURL" >> $GITHUB_ENV
-          echo "WEB_APPURL=$WEB_APPURL" >> $GITHUB_OUTPUT
+          export WEBAPP_URL="https://$(echo "$DEPLOY_OUTPUT" | jq -r '.webSiteDefaultHostname // empty')"
+          echo "WEBAPP_URL=$WEBAPP_URL" >> $GITHUB_ENV
+          echo "WEBAPP_URL=$WEBAPP_URL" >> $GITHUB_OUTPUT
 
       - name: Run Post deployment scripts
         run: |
