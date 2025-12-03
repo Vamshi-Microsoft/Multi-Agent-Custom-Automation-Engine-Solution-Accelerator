@@ -180,7 +180,7 @@ jobs:
           $env:AZURE_ENV_NAME = "${{ steps.get_output_windows.outputs.AZURE_ENV_NAME }}"
 
           # Run the script (PowerShell version)
-          & infra\scripts\Process-Sample-Data.ps1 "${{ inputs.RESOURCE_GROUP_NAME }}"
+          & infra\scripts\Team-Config-And-Data.ps1 "${{ inputs.RESOURCE_GROUP_NAME }}"
 
       - name: Generate Deployment Summary
         if: always()
