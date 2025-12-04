@@ -100,7 +100,6 @@ if [ -n "$resourceGroup" ]; then
         stIsPublicAccessDisabled=true
         echo "Enabling public access for storage account: $storageAccount"
         az storage account update --name "$storageAccount" --public-network-access enabled --default-action Allow --output none
-        echo "Waiting 10 seconds for public access to be enabled..."
         sleep 10
         
         # Check if public access is actually enabled
@@ -120,8 +119,6 @@ if [ -n "$resourceGroup" ]; then
         srchIsPublicAccessDisabled=true
         echo "Enabling public access for search service: $aiSearch"
         az search service update --name "$aiSearch" --resource-group "$resourceGroup" --public-network-access enabled --output none
-        
-        echo "Waiting 10 seconds for public access to be enabled..."
         sleep 10
         
         # Check if public access is actually enabled
