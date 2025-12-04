@@ -151,7 +151,7 @@ if ($ResourceGroup) {
     }
 }
 
-
+Start-Sleep -Seconds 30
 # Upload sample files to blob storage
 Write-Host "Uploading sample files to blob storage..."
 $result = az storage blob upload-batch --account-name $StorageAccount --destination $BlobContainer --source "data/datasets" --auth-mode login --pattern "*" --overwrite --output none
