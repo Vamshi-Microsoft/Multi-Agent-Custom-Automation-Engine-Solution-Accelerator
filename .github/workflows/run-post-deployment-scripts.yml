@@ -33,6 +33,10 @@ on:
         description: 'Azure Environment Name (AZD Environment)'
         required: true
         type: string
+      AZURE_SUBSCRIPTION_ID:
+        description: 'Azure Subscription ID (if different from default)'
+        required: false
+        type: string
       dryRun:
         description: 'Dry run mode (validate inputs without executing)'
         required: false
@@ -42,7 +46,7 @@ on:
 env:
   AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
   AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-  AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  AZURE_SUBSCRIPTION_ID: ${{ inputs.AZURE_SUBSCRIPTION_ID || secrets.AZURE_SUBSCRIPTION_ID }}
 
 jobs:
   run-post-deployment:
@@ -79,6 +83,7 @@ jobs:
         echo "AI Search Service: ${{ inputs.AZURE_AI_SEARCH_NAME }}"
         echo "AI Search Index: ${{ inputs.AZURE_AI_SEARCH_INDEX_NAME }}"
         echo "Azure Environment Name: ${{ inputs.AZURE_ENV_NAME }}"
+        echo "Azure Subscription ID: ${{ env.AZURE_SUBSCRIPTION_ID }}"
         echo "Dry Run Mode: ${{ inputs.dryRun }}"
         
         # Validate required parameters
@@ -179,7 +184,7 @@ jobs:
         echo "This workflow would execute the following:"
         echo ""
         echo "1. Set Environment Variables:"
-        echo "   AZURE_SUBSCRIPTION_ID=${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+        echo "   AZURE_SUBSCRIPTION_ID=${{ env.AZURE_SUBSCRIPTION_ID }}"
         echo "   AZURE_RESOURCE_GROUP=${{ inputs.RESOURCE_GROUP_NAME }}"
         echo "   BACKEND_URL=${{ inputs.BACKEND_URL }}"
         echo "   AZURE_STORAGE_ACCOUNT_NAME=${{ inputs.AZURE_STORAGE_ACCOUNT_NAME }}"
@@ -205,11 +210,26 @@ jobs:
         set -e
         
         # Set subscription
-        az account set --subscription "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+        az account set --subscription "${{ env.AZURE_SUBSCRIPTION_ID }}"
+        
+        # Verify subscription is correctly set
+        current_sub=$(az account show --query id -o tsv)
+        echo "Current subscription: $current_sub"
+        
+        if [ "$current_sub" != "${{ env.AZURE_SUBSCRIPTION_ID }}" ]; then
+          echo "❌ Error: Failed to set correct subscription"
+          exit 1
+        fi
+        echo "✅ Subscription set correctly"
 
         # Set environment variables for team_config_and_data.sh
-        export AZURE_SUBSCRIPTION_ID="${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+        export AZURE_SUBSCRIPTION_ID="${{ env.AZURE_SUBSCRIPTION_ID }}"
         export AZURE_RESOURCE_GROUP="${{ inputs.RESOURCE_GROUP_NAME }}"
+        
+        # Set environment variables to prevent interactive prompts
+        export CI=true
+        export GITHUB_ACTIONS=true
+        export NON_INTERACTIVE=true
         export BACKEND_URL="${{ inputs.BACKEND_URL }}"
         export AZURE_STORAGE_ACCOUNT_NAME="${{ inputs.AZURE_STORAGE_ACCOUNT_NAME }}"
         export AZURE_STORAGE_CONTAINER_NAME="${{ inputs.AZURE_STORAGE_CONTAINER_NAME }}"
@@ -307,6 +327,7 @@ jobs:
         echo "| **AI Search Service** | \`${{ inputs.AZURE_AI_SEARCH_NAME }}\` |" >> $GITHUB_STEP_SUMMARY
         echo "| **AI Search Index** | \`${{ inputs.AZURE_AI_SEARCH_INDEX_NAME }}\` |" >> $GITHUB_STEP_SUMMARY
         echo "| **Azure Environment** | \`${{ inputs.AZURE_ENV_NAME }}\` |" >> $GITHUB_STEP_SUMMARY
+        echo "| **Azure Subscription** | \`${{ env.AZURE_SUBSCRIPTION_ID }}\` |" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         
         if [[ "${{ job.status }}" == "success" ]]; then
