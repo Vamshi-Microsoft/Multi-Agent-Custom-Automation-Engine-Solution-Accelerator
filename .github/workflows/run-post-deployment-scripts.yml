@@ -1,0 +1,337 @@
+name: Run Post Deployment Scripts
+
+on:
+  workflow_dispatch:
+    inputs:
+      RESOURCE_GROUP_NAME:
+        description: 'Azure Resource Group Name'
+        required: true
+        type: string
+      BACKEND_URL:
+        description: 'Backend URL (Container App or Web App URL)'
+        required: true
+        type: string
+      AZURE_STORAGE_ACCOUNT_NAME:
+        description: 'Azure Storage Account Name'
+        required: true
+        type: string
+      AZURE_STORAGE_CONTAINER_NAME:
+        description: 'Azure Storage Container Name'
+        required: false
+        type: string
+        default: 'sample-dataset'
+      AZURE_AI_SEARCH_NAME:
+        description: 'Azure AI Search Service Name'
+        required: true
+        type: string
+      AZURE_AI_SEARCH_INDEX_NAME:
+        description: 'Azure AI Search Index Name'
+        required: false
+        type: string
+        default: 'sample-dataset-index'
+      AZURE_ENV_NAME:
+        description: 'Azure Environment Name (AZD Environment)'
+        required: true
+        type: string
+      dryRun:
+        description: 'Dry run mode (validate inputs without executing)'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+  AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+  AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+jobs:
+  run-post-deployment:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Azure CLI
+      shell: bash
+      run: |
+        curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+
+    - name: Azure CLI Login
+      uses: azure/login@v1
+      with:
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+    - name: Verify Azure Authentication
+      run: |
+        az account show
+        az account set --subscription "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+
+    - name: Validate Input Parameters
+      run: |
+        echo "=== Validating Input Parameters ==="
+        echo "Resource Group: ${{ inputs.RESOURCE_GROUP_NAME }}"
+        echo "Backend URL: ${{ inputs.BACKEND_URL }}"
+        echo "Storage Account: ${{ inputs.AZURE_STORAGE_ACCOUNT_NAME }}"
+        echo "Storage Container: ${{ inputs.AZURE_STORAGE_CONTAINER_NAME }}"
+        echo "AI Search Service: ${{ inputs.AZURE_AI_SEARCH_NAME }}"
+        echo "AI Search Index: ${{ inputs.AZURE_AI_SEARCH_INDEX_NAME }}"
+        echo "Azure Environment Name: ${{ inputs.AZURE_ENV_NAME }}"
+        echo "Dry Run Mode: ${{ inputs.dryRun }}"
+        
+        # Validate required parameters
+        if [ -z "${{ inputs.RESOURCE_GROUP_NAME }}" ]; then
+          echo "❌ Error: Resource Group Name is required"
+          exit 1
+        fi
+        
+        if [ -z "${{ inputs.BACKEND_URL }}" ]; then
+          echo "❌ Error: Backend URL is required"
+          exit 1
+        fi
+        
+        if [ -z "${{ inputs.AZURE_STORAGE_ACCOUNT_NAME }}" ]; then
+          echo "❌ Error: Azure Storage Account Name is required"
+          exit 1
+        fi
+        
+        if [ -z "${{ inputs.AZURE_AI_SEARCH_NAME }}" ]; then
+          echo "❌ Error: Azure AI Search Name is required"
+          exit 1
+        fi
+        
+        if [ -z "${{ inputs.AZURE_ENV_NAME }}" ]; then
+          echo "❌ Error: Azure Environment Name is required"
+          exit 1
+        fi
+        
+        echo "✅ All required parameters provided"
+
+    - name: Verify Azure Resources Exist
+      run: |
+        echo "=== Verifying Azure Resources ==="
+        
+        # Check Resource Group
+        if ! az group show --name "${{ inputs.RESOURCE_GROUP_NAME }}" >/dev/null 2>&1; then
+          echo "❌ Error: Resource group '${{ inputs.RESOURCE_GROUP_NAME }}' not found"
+          exit 1
+        fi
+        echo "✅ Resource Group exists: ${{ inputs.RESOURCE_GROUP_NAME }}"
+        
+        # Check Storage Account
+        if ! az storage account show --name "${{ inputs.AZURE_STORAGE_ACCOUNT_NAME }}" --resource-group "${{ inputs.RESOURCE_GROUP_NAME }}" >/dev/null 2>&1; then
+          echo "❌ Error: Storage account '${{ inputs.AZURE_STORAGE_ACCOUNT_NAME }}' not found in resource group '${{ inputs.RESOURCE_GROUP_NAME }}'"
+          exit 1
+        fi
+        echo "✅ Storage Account exists: ${{ inputs.AZURE_STORAGE_ACCOUNT_NAME }}"
+        
+        # Check AI Search Service
+        if ! az search service show --name "${{ inputs.AZURE_AI_SEARCH_NAME }}" --resource-group "${{ inputs.RESOURCE_GROUP_NAME }}" >/dev/null 2>&1; then
+          echo "❌ Error: AI Search service '${{ inputs.AZURE_AI_SEARCH_NAME }}' not found in resource group '${{ inputs.RESOURCE_GROUP_NAME }}'"
+          exit 1
+        fi
+        echo "✅ AI Search Service exists: ${{ inputs.AZURE_AI_SEARCH_NAME }}"
+
+    - name: Validate Backend URL
+      run: |
+        echo "=== Validating Backend URL ==="
+        backend_url="${{ inputs.BACKEND_URL }}"
+        
+        # Basic URL format validation
+        if [[ ! "$backend_url" =~ ^https?:// ]]; then
+          echo "❌ Error: Backend URL must start with http:// or https://"
+          exit 1
+        fi
+        
+        echo "✅ Backend URL format is valid: $backend_url"
+        
+        # Optional: Test if URL is reachable (with timeout)
+        if curl --connect-timeout 10 --max-time 30 -s -f "$backend_url" > /dev/null 2>&1; then
+          echo "✅ Backend URL is reachable"
+        else
+          echo "⚠️ Warning: Backend URL might not be reachable (this might be expected if the service is still starting up)"
+        fi
+
+    - name: Verify Script Files Exist
+      run: |
+        echo "=== Verifying Script Files ==="
+        
+        if [ ! -f "infra/scripts/team_config_and_data.sh" ]; then
+          echo "❌ Error: Script file 'infra/scripts/team_config_and_data.sh' not found"
+          exit 1
+        fi
+        echo "✅ Script file exists: infra/scripts/team_config_and_data.sh"
+        
+        # Check if script is executable
+        if [ ! -x "infra/scripts/team_config_and_data.sh" ]; then
+          echo "Making script executable..."
+          chmod +x infra/scripts/team_config_and_data.sh
+        fi
+        echo "✅ Script is executable"
+
+    - name: Dry Run - Show Execution Plan
+      if: inputs.dryRun == true
+      run: |
+        echo "=== DRY RUN MODE - EXECUTION PLAN ==="
+        echo ""
+        echo "This workflow would execute the following:"
+        echo ""
+        echo "1. Set Environment Variables:"
+        echo "   AZURE_SUBSCRIPTION_ID=${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+        echo "   AZURE_RESOURCE_GROUP=${{ inputs.RESOURCE_GROUP_NAME }}"
+        echo "   BACKEND_URL=${{ inputs.BACKEND_URL }}"
+        echo "   AZURE_STORAGE_ACCOUNT_NAME=${{ inputs.AZURE_STORAGE_ACCOUNT_NAME }}"
+        echo "   AZURE_STORAGE_CONTAINER_NAME=${{ inputs.AZURE_STORAGE_CONTAINER_NAME }}"
+        echo "   AZURE_AI_SEARCH_NAME=${{ inputs.AZURE_AI_SEARCH_NAME }}"
+        echo "   AZURE_AI_SEARCH_INDEX_NAME=${{ inputs.AZURE_AI_SEARCH_INDEX_NAME }}"
+        echo "   AZURE_ENV_NAME=${{ inputs.AZURE_ENV_NAME }}"
+        echo ""
+        echo "2. Execute Command:"
+        echo "   bash infra/scripts/team_config_and_data.sh '${{ inputs.RESOURCE_GROUP_NAME }}'"
+        echo ""
+        echo "3. Expected Actions:"
+        echo "   - Upload team configurations to storage"
+        echo "   - Process and index sample datasets"
+        echo "   - Configure AI Search index"
+        echo ""
+        echo "✅ Dry run completed - no actual changes made"
+
+    - name: Run Post Deployment Scripts
+      if: inputs.dryRun != true
+      run: |
+        echo "=== EXECUTING POST DEPLOYMENT SCRIPTS ==="
+        set -e
+        
+        # Set subscription
+        az account set --subscription "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+
+        # Set environment variables for team_config_and_data.sh
+        export AZURE_SUBSCRIPTION_ID="${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+        export AZURE_RESOURCE_GROUP="${{ inputs.RESOURCE_GROUP_NAME }}"
+        export BACKEND_URL="${{ inputs.BACKEND_URL }}"
+        export AZURE_STORAGE_ACCOUNT_NAME="${{ inputs.AZURE_STORAGE_ACCOUNT_NAME }}"
+        export AZURE_STORAGE_CONTAINER_NAME="${{ inputs.AZURE_STORAGE_CONTAINER_NAME }}"
+        export AZURE_AI_SEARCH_NAME="${{ inputs.AZURE_AI_SEARCH_NAME }}"
+        export AZURE_AI_SEARCH_INDEX_NAME="${{ inputs.AZURE_AI_SEARCH_INDEX_NAME }}"
+        export AZURE_ENV_NAME="${{ inputs.AZURE_ENV_NAME }}"
+        
+        echo "Environment variables set:"
+        echo "AZURE_SUBSCRIPTION_ID: $AZURE_SUBSCRIPTION_ID"
+        echo "AZURE_RESOURCE_GROUP: $AZURE_RESOURCE_GROUP"
+        echo "BACKEND_URL: $BACKEND_URL"
+        echo "AZURE_STORAGE_ACCOUNT_NAME: $AZURE_STORAGE_ACCOUNT_NAME"
+        echo "AZURE_STORAGE_CONTAINER_NAME: $AZURE_STORAGE_CONTAINER_NAME"
+        echo "AZURE_AI_SEARCH_NAME: $AZURE_AI_SEARCH_NAME"
+        echo "AZURE_AI_SEARCH_INDEX_NAME: $AZURE_AI_SEARCH_INDEX_NAME"
+        echo "AZURE_ENV_NAME: $AZURE_ENV_NAME"
+        echo ""
+        
+        # Upload team configurations and index sample data in one step
+        echo "Executing: bash infra/scripts/team_config_and_data.sh '${{ inputs.RESOURCE_GROUP_NAME }}'"
+        bash infra/scripts/team_config_and_data.sh "${{ inputs.RESOURCE_GROUP_NAME }}"
+        
+        echo "✅ Post deployment scripts completed successfully"
+
+    - name: Verify Results
+      if: inputs.dryRun != true
+      run: |
+        echo "=== VERIFYING RESULTS ==="
+        
+        # Check if storage container has files
+        echo "Checking uploaded files in storage container..."
+        file_count=$(az storage blob list \
+          --account-name "${{ inputs.AZURE_STORAGE_ACCOUNT_NAME }}" \
+          --container-name "${{ inputs.AZURE_STORAGE_CONTAINER_NAME }}" \
+          --auth-mode login \
+          --query "length(@)" \
+          --output tsv 2>/dev/null || echo "0")
+        
+        echo "Files in container '${{ inputs.AZURE_STORAGE_CONTAINER_NAME }}': $file_count"
+        
+        if [ "$file_count" -gt 0 ]; then
+          echo "✅ Storage container contains $file_count files"
+          
+          # List some of the files
+          echo "Sample files:"
+          az storage blob list \
+            --account-name "${{ inputs.AZURE_STORAGE_ACCOUNT_NAME }}" \
+            --container-name "${{ inputs.AZURE_STORAGE_CONTAINER_NAME }}" \
+            --auth-mode login \
+            --query "[].name" \
+            --output table | head -10
+        else
+          echo "⚠️ Warning: No files found in storage container"
+        fi
+        
+        # Check AI Search index
+        echo ""
+        echo "Checking AI Search index..."
+        index_exists=$(az search index show \
+          --service-name "${{ inputs.AZURE_AI_SEARCH_NAME }}" \
+          --name "${{ inputs.AZURE_AI_SEARCH_INDEX_NAME }}" \
+          --resource-group "${{ inputs.RESOURCE_GROUP_NAME }}" \
+          --query "name" \
+          --output tsv 2>/dev/null || echo "not_found")
+        
+        if [ "$index_exists" != "not_found" ]; then
+          echo "✅ AI Search index exists: ${{ inputs.AZURE_AI_SEARCH_INDEX_NAME }}"
+          
+          # Get document count
+          doc_count=$(az search index statistics \
+            --service-name "${{ inputs.AZURE_AI_SEARCH_NAME }}" \
+            --name "${{ inputs.AZURE_AI_SEARCH_INDEX_NAME }}" \
+            --resource-group "${{ inputs.RESOURCE_GROUP_NAME }}" \
+            --query "documentCount" \
+            --output tsv 2>/dev/null || echo "0")
+          
+          echo "Documents in index: $doc_count"
+        else
+          echo "⚠️ Warning: AI Search index '${{ inputs.AZURE_AI_SEARCH_INDEX_NAME }}' not found"
+        fi
+
+    - name: Generate Summary
+      if: always()
+      run: |
+        echo "## 🚀 Post Deployment Script Execution Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Parameter | Value |" >> $GITHUB_STEP_SUMMARY
+        echo "|-----------|-------|" >> $GITHUB_STEP_SUMMARY
+        echo "| **Execution Mode** | ${{ inputs.dryRun == true && '🔍 Dry Run' || '▶️ Full Execution' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| **Status** | ${{ job.status == 'success' && '✅ Success' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| **Resource Group** | \`${{ inputs.RESOURCE_GROUP_NAME }}\` |" >> $GITHUB_STEP_SUMMARY
+        echo "| **Backend URL** | [${{ inputs.BACKEND_URL }}](${{ inputs.BACKEND_URL }}) |" >> $GITHUB_STEP_SUMMARY
+        echo "| **Storage Account** | \`${{ inputs.AZURE_STORAGE_ACCOUNT_NAME }}\` |" >> $GITHUB_STEP_SUMMARY
+        echo "| **Storage Container** | \`${{ inputs.AZURE_STORAGE_CONTAINER_NAME }}\` |" >> $GITHUB_STEP_SUMMARY
+        echo "| **AI Search Service** | \`${{ inputs.AZURE_AI_SEARCH_NAME }}\` |" >> $GITHUB_STEP_SUMMARY
+        echo "| **AI Search Index** | \`${{ inputs.AZURE_AI_SEARCH_INDEX_NAME }}\` |" >> $GITHUB_STEP_SUMMARY
+        echo "| **Azure Environment** | \`${{ inputs.AZURE_ENV_NAME }}\` |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [[ "${{ job.status }}" == "success" ]]; then
+          if [[ "${{ inputs.dryRun }}" == "true" ]]; then
+            echo "### 🔍 Dry Run Completed" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ All input parameters validated" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ Azure resources verified" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ Script files checked" >> $GITHUB_STEP_SUMMARY
+            echo "- 📋 Execution plan generated" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ✅ Post Deployment Scripts Executed Successfully" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ Team configurations uploaded" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ Sample datasets processed and indexed" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ AI Search index configured" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ Results verified" >> $GITHUB_STEP_SUMMARY
+          fi
+        else
+          echo "### ❌ Execution Failed" >> $GITHUB_STEP_SUMMARY
+          echo "- ❌ Post deployment script execution encountered an error" >> $GITHUB_STEP_SUMMARY
+          echo "- 🔍 Check the job logs above for detailed error information" >> $GITHUB_STEP_SUMMARY
+          echo "- 💡 Consider running in dry-run mode first to validate inputs" >> $GITHUB_STEP_SUMMARY
+        fi
+
+    - name: Logout from Azure
+      if: always()
+      run: |
+        az logout || true
+        echo "Logged out from Azure."
