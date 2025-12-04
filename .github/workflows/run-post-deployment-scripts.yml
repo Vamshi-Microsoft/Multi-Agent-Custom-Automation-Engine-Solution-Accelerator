@@ -205,6 +205,8 @@ jobs:
 
     - name: Run Post Deployment Scripts
       if: inputs.dryRun != true
+      env:
+        AZURE_SUBSCRIPTION_ID: ${{ env.AZURE_SUBSCRIPTION_ID }}
       run: |
         echo "=== EXECUTING POST DEPLOYMENT SCRIPTS ==="
         set -e
