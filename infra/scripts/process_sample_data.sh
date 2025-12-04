@@ -127,7 +127,14 @@ fi
 
 #Upload sample files to blob storage
 echo "Uploading sample files to blob storage..."
-az storage blob upload-batch --account-name "$storageAccount" --destination "$blobContainer" --source "data/datasets" --auth-mode login --pattern '*' --overwrite --output none
+if [ "$GITHUB_ACTIONS" = "true" ]; then
+    # CI/CD environment - use service principal with storage account key
+    storageKey=$(az storage account keys list --account-name "$storageAccount" --resource-group "$resourceGroup" --query '[0].value' -o tsv)
+    az storage blob upload-batch --account-name "$storageAccount" --account-key "$storageKey" --destination "$blobContainer" --source "data/datasets" --pattern '*' --overwrite --output none
+else
+    # Local development - use interactive login
+    az storage blob upload-batch --account-name "$storageAccount" --destination "$blobContainer" --source "data/datasets" --auth-mode login --pattern '*' --overwrite --output none
+fi
 if [ $? -ne 0 ]; then
     echo "Error: Failed to upload files to blob storage."
     exit 1
