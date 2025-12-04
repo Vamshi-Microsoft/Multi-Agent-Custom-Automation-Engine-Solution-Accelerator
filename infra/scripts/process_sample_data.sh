@@ -100,11 +100,18 @@ if [ -n "$resourceGroup" ]; then
         stIsPublicAccessDisabled=true
         echo "Enabling public access for storage account: $storageAccount"
         az storage account update --name "$storageAccount" --public-network-access enabled --default-action Allow --output none
-        if [ $? -ne 0 ]; then
+        echo "Waiting 10 seconds for public access to be enabled..."
+        sleep 10
+        
+        # Check if public access is actually enabled
+        currentAccess=$(az storage account show --name "$storageAccount" --resource-group "$resourceGroup" --query "publicNetworkAccess" -o tsv)
+        sleep 10
+        if [ "$currentAccess" == "Enabled" ]; then
+            echo "Public access enabled for storage account: $storageAccount"
+        else
             echo "Error: Failed to enable public access for storage account."
             exit 1
         fi
-        echo "Public access enabled for storage account: $storageAccount"
     else
         echo "Public access is already enabled for storage account: $storageAccount"
     fi
@@ -113,11 +120,19 @@ if [ -n "$resourceGroup" ]; then
         srchIsPublicAccessDisabled=true
         echo "Enabling public access for search service: $aiSearch"
         az search service update --name "$aiSearch" --resource-group "$resourceGroup" --public-network-access enabled --output none
-        if [ $? -ne 0 ]; then
+        
+        echo "Waiting 10 seconds for public access to be enabled..."
+        sleep 10
+        
+        # Check if public access is actually enabled
+        currentAccess=$(az search service show --name "$aiSearch" --resource-group "$resourceGroup" --query "publicNetworkAccess" -o tsv)
+        sleep 10
+        if [ "$currentAccess" == "Enabled" ]; then
+            echo "Public access enabled for search service: $aiSearch"
+        else
             echo "Error: Failed to enable public access for search service."
             exit 1
         fi
-        echo "Public access enabled for search service: $aiSearch"
     else
         echo "Public access is already enabled for search service: $aiSearch"
     fi
