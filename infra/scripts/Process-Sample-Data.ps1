@@ -151,6 +151,7 @@ if ($ResourceGroup) {
     }
 }
 
+Write-Host "Waiting for all network access changes to propagate..."
 Start-Sleep -Seconds 30
 # Upload sample files to blob storage
 Write-Host "Uploading sample files to blob storage..."

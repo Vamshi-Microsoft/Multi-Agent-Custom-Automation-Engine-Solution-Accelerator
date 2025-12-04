@@ -36,7 +36,7 @@ on:
         default: false
         type: boolean
       build_docker_image:
-        description: 'Build And Push Docker Image (Optional)'
+        description: 'Build & Push Docker Image (Optional)'
         required: false
         default: false
         type: boolean
@@ -68,7 +68,7 @@ on:
         default: ''
         type: string
       existing_webapp_url:
-        description: 'Existing Container WebApp URL (Skips Deployment)'
+        description: 'Existing WebApp URL (Skips Deployment)'
         required: false
         default: ''
         type: string
