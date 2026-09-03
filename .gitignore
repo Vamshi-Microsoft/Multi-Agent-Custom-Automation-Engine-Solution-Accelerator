@@ -480,3 +480,11 @@ infra/main.json
 # Preflight check artifacts
 infra/preflight-*.bicepparam
 /.copilot-tracking
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+/.playwright-mcp

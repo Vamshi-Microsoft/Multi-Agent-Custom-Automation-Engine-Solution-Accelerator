@@ -1,0 +1,26 @@
+{
+  "name": "multi-agent-custom-automation-engine-solution-accelerator",
+  "version": "1.0.0",
+  "description": "Welcome to the *Multi-Agent Custom Automation Engine* solution accelerator, designed to help businesses leverage AI agents for automating complex organizational tasks. This accelerator provides a foundation for building AI-driven orchestration systems that can coordinate multiple specialized agents to accomplish various business processes.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Vamshi-Microsoft/Multi-Agent-Custom-Automation-Engine-Solution-Accelerator.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Vamshi-Microsoft/Multi-Agent-Custom-Automation-Engine-Solution-Accelerator/issues"
+  },
+  "homepage": "https://github.com/Vamshi-Microsoft/Multi-Agent-Custom-Automation-Engine-Solution-Accelerator#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.62.1",
+    "@types/node": "^26.4.0"
+  }
+}
