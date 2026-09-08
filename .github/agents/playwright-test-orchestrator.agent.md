@@ -4,6 +4,7 @@ description: 'End-to-end Playwright test orchestrator. Runs the planner, generat
 tools:
   - search
   - edit
+  - execute
   - agent
 model: Claude Opus 4.7
 agents:
@@ -27,9 +28,91 @@ Before running the pipeline, make sure you know:
    silently. If none exists, continue without asking.
 3. **Output location** for the test plan and generated tests (default:
    `specs/plan.md` for the plan, `tests/` for generated specs).
+4. **Authentication mode** — whether the target URL is protected by Microsoft
+   Entra ID / Azure App Service EasyAuth. See the "Authenticated URLs" section
+   below for detection and setup rules.
 
 If the user's request is missing the target URL, ask for it once and then proceed.
 Do not ask further clarifying questions — pick reasonable defaults.
+
+## Authenticated URLs — Microsoft Entra ID / EasyAuth
+
+Some target URLs (typically `*.azurewebsites.net` apps) are protected by
+Microsoft sign-in (Entra ID / Azure App Service EasyAuth). The pipeline handles
+these with one simple interactive step: open a browser once, let the user sign
+in by hand, save the resulting session, and reuse it in every stage.
+
+Do NOT edit `playwright.config.ts`, do NOT create a `setup` project, do NOT ask
+for the user's password, and do NOT try to script the Microsoft login flow.
+
+### Deciding whether auth is required
+
+Treat the target as authenticated when **any** of these is true:
+- The user says the app requires sign-in / login / Entra ID / Azure AD / SSO /
+  EasyAuth, or provides an `*.azurewebsites.net` URL without saying otherwise.
+- A quick check of the URL redirects to `login.microsoftonline.com` or
+  `login.microsoft.com`.
+- The file `playwright/.auth/user.json` already exists (a previous run already
+  captured a session — reuse it).
+
+If unsure, ask the user once: *"Is the target URL behind Microsoft sign-in?"*
+Default to unauthenticated when the answer is no.
+
+### The one-time interactive login (Stage 0)
+
+When auth is required and `playwright/.auth/user.json` is missing or older than
+~12h, the orchestrator opens a real browser at the target URL, waits for the
+user to sign in manually, and saves the session to a shared storage-state file.
+
+Run exactly this command with your `execute` tool (do NOT use `edit`; do NOT
+delegate to a subagent):
+
+```
+npx playwright open <TARGET_URL> --save-storage=playwright/.auth/user.json
+```
+
+Then tell the user:
+
+> A browser window has opened at `<TARGET_URL>`. Please sign in with your
+> Microsoft account (complete MFA if prompted). Once the app has fully loaded,
+> close the browser window — your session will be saved automatically.
+
+When the browser closes, verify `playwright/.auth/user.json` exists. If it does
+not, stop and report the failure — do not proceed. Never ask for the user's
+password, never send it through any tool, and never embed it in a file.
+
+### Reusing the saved session in every stage
+
+Once `playwright/.auth/user.json` exists, propagate it to every subagent and
+every generated test file:
+
+1. **In every planner / generator / healer prompt**, include this block so the
+   subagent loads the signed-in session before driving the app:
+
+   ```
+   <auth-state>
+   - The target URL is behind Microsoft sign-in. A signed-in session has
+     already been captured at `playwright/.auth/user.json`.
+   - Before navigating to the app, load this storage state into your browser
+     context (use the Playwright MCP `browser_set_storage_state` tool with
+     path `playwright/.auth/user.json`, or open a new context with
+     `storageState: 'playwright/.auth/user.json'`).
+   - Do NOT attempt to sign in, do NOT navigate to `login.microsoftonline.com`,
+     and do NOT ask the user for credentials.
+   </auth-state>
+   ```
+
+2. **In every generator prompt** additionally require this line to be added
+   near the top of the produced spec file so `npx playwright test` reuses the
+   session too:
+
+   ```ts
+   test.use({ storageState: 'playwright/.auth/user.json' });
+   ```
+
+3. **In the healer prompt**, remind the healer that any failure showing
+   redirects to `login.microsoftonline.com` means the session expired — the
+   fix is to re-run Stage 0, not to script a login.
 
 ## Base URL policy — keep generated tests portable
 
@@ -58,9 +141,39 @@ The orchestrator is responsible for enforcing this across the pipeline:
 
 ## Pipeline
 
-Run the three stages strictly in order. Each stage is a single `agent` call.
-Do NOT run stages in parallel — later stages depend on the artifacts of earlier
-stages.
+Run the stages strictly in order. Stages 1–3 are each a single `agent` call.
+Stage 0 is only executed when the target requires auth. Do NOT run stages in
+parallel — later stages depend on the artifacts of earlier stages.
+
+### Stage 0 — Auth bootstrap (only when auth is required)
+
+Skip this stage entirely for unauthenticated targets.
+
+When auth is required:
+
+1. Check whether `playwright/.auth/user.json` already exists and is recent
+   (< ~12h old). If so, treat the session as valid and skip the rest of this
+   stage.
+2. Otherwise, create the `playwright/.auth/` directory if it does not exist,
+   then run the following command with your `execute` tool:
+
+   ```
+   npx playwright open <TARGET_URL> --save-storage=playwright/.auth/user.json
+   ```
+
+3. Post one short message telling the user: *"A browser window has opened at
+   `<TARGET_URL>`. Sign in with your Microsoft account (complete MFA if
+   prompted), wait for the app to load, then close the browser window — your
+   session will be saved automatically."*
+4. Wait for the command to exit (the user closing the window ends it).
+5. Verify `playwright/.auth/user.json` was created. If it was not, stop and
+   report the failure — do not proceed to Stage 1.
+6. From this point on, include the `<auth-state>` block described in
+   "Reusing the saved session in every stage" in every subagent prompt.
+
+Never ask the user for credentials, never edit `playwright.config.ts`, never
+generate an `auth.setup.ts` file. The one-shot `playwright open` command is
+the entire mechanism.
 
 ### Stage 1 — Planning
 
@@ -137,6 +250,9 @@ Keep the summary brief. Do not restate the full plan or dump generated code.
 - Never skip a stage.
 - Never run stages in parallel.
 - Never call Playwright MCP tools yourself — always delegate via `agent`.
+- Run every shell command (e.g. `npx playwright open ...`, file checks) with
+  your `execute` tool. Do not use `edit` to run commands, and do not delegate
+  command execution to a subagent.
 - Ensure `playwright.config.ts` has an env-driven `baseURL` before Stage 2, and
   always pass the URL-handling rule to the generator. Generated tests must use
   relative paths, never a hardcoded deployment URL.
